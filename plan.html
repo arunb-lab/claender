@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#fafaf9" />
+<title>90 Days — Engineering Plan</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<style>
+  html, body { background: #fafaf9; }
+  body { font-family: 'Inter Tight', system-ui, -apple-system, sans-serif; }
+  .font-display { font-family: 'Instrument Serif', Georgia, serif; }
+  .font-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  /* Avoid iOS input zoom */
+  textarea, input { font-size: 16px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-type="module">
+const { useState, useEffect } = React;
+
+// ---- Icons (inline, no dep) ----
+const Icon = ({ children, className = "w-4 h-4" }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{children}</svg>
+);
+const IconCheck    = (p) => <Icon {...p}><polyline points="20 6 9 17 4 12"/></Icon>;
+const IconCalendar = (p) => <Icon {...p}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></Icon>;
+const IconTarget   = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></Icon>;
+const IconFlame    = (p) => <Icon {...p}><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></Icon>;
+const IconTrophy   = (p) => <Icon {...p}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></Icon>;
+const IconLeft     = (p) => <Icon {...p}><polyline points="15 18 9 12 15 6"/></Icon>;
+const IconRight    = (p) => <Icon {...p}><polyline points="9 18 15 12 9 6"/></Icon>;
+const IconX        = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></Icon>;
+
+// ---- Constants ----
+const MILESTONES = {
+  7:  { label: "Routine locked in" },
+  14: { label: "~20 DSA problems done" },
+  30: { label: "Project 1 deployed (REST API + tests + CI)" },
+  45: { label: "Start Upwork bids — 5/day" },
+  60: { label: "Project 2 deployed · AWS SAA scheduled" },
+  75: { label: "CV + LinkedIn rebuilt" },
+  90: { label: "100+ applications sent" },
+};
+const TASKS = [
+  { id: "dsa",    label: "DSA — 2 LeetCode problems", time: "5:30–7:00 AM"  },
+  { id: "build",  label: "Build project",              time: "5:00–8:00 PM"  },
+  { id: "study",  label: "System design / reading",    time: "9:00–10:30 PM" },
+  { id: "commit", label: "Commit + English summary",   time: "10:30–11:00 PM"},
+];
+const PHASES = [
+  { title: "Month 1 — Foundation",     subtitle: "Arrays · strings · hashmaps · two pointers · trees    →    Project 1: REST API", start: 1,  end: 30 },
+  { title: "Month 2 — Depth + Cloud",  subtitle: "Graphs · DP · heaps · AWS deploy    →    Project 2: Celery + Redis + Postgres",   start: 31, end: 60 },
+  { title: "Month 3 — Polish + Apply", subtitle: "Mock interviews · Project 3 · 10 applications/day    →    Remote role hunt",     start: 61, end: 90 },
+];
+
+// ---- Date helpers ----
+const todayISO = () => {
+  const d = new Date();
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString().split("T")[0];
+};
+const addDays = (s, n) => {
+  const d = new Date(s + "T00:00:00"); d.setDate(d.getDate() + n);
+  return d.toISOString().split("T")[0];
+};
+const fmtDate = (s) => new Date(s + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+const diffDays = (a, b) => Math.round((new Date(b + "T00:00:00") - new Date(a + "T00:00:00")) / 86400000);
+
+// ---- Storage (localStorage) ----
+const LS = {
+  get(key, fallback) {
+    try { const v = localStorage.getItem(key); return v === null ? fallback : JSON.parse(v); }
+    catch { return fallback; }
+  },
+  set(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+  },
+};
+
+// ---- App ----
+function PlanCalendar() {
+  const today = todayISO();
+  const [startDate, setStartDate] = useState(() => LS.get("plan-start-date", null) || today);
+  const [progress, setProgress]   = useState(() => LS.get("plan-progress", {}));
+  const [selectedDay, setSelectedDay] = useState(null);
+
+  useEffect(() => { LS.set("plan-start-date", startDate); }, [startDate]);
+  useEffect(() => { LS.set("plan-progress", progress); }, [progress]);
+
+  const toggleTask = (dayNum, taskId) => {
+    const key = `d${dayNum}`; const cur = progress[key] || {};
+    setProgress({ ...progress, [key]: { ...cur, [taskId]: !cur[taskId] } });
+  };
+  const updateNote = (dayNum, note) => {
+    const key = `d${dayNum}`; const cur = progress[key] || {};
+    setProgress({ ...progress, [key]: { ...cur, note } });
+  };
+  const resetStart = () => { if (confirm("Reset start date to today?")) setStartDate(today); };
+
+  const exportData = () => {
+    const blob = new Blob([JSON.stringify({ startDate, progress }, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `plan-backup-${today}.json`; a.click();
+    URL.revokeObjectURL(url);
+  };
+  const importData = () => {
+    const input = document.createElement("input"); input.type = "file"; input.accept = "application/json";
+    input.onchange = (e) => {
+      const file = e.target.files[0]; if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(reader.result);
+          if (parsed.startDate) setStartDate(parsed.startDate);
+          if (parsed.progress)  setProgress(parsed.progress);
+          alert("Imported.");
+        } catch { alert("Invalid file."); }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  };
+
+  const offset = diffDays(startDate, today);
+  const currentDayNum = Math.max(1, Math.min(90, offset + 1));
+
+  let completedDays = 0, totalTasks = 0, dsaProblems = 0, streak = 0;
+  for (let i = 1; i <= 90; i++) {
+    const d = progress[`d${i}`] || {};
+    const done = TASKS.filter(t => d[t.id]).length;
+    totalTasks += done;
+    if (d.dsa) dsaProblems += 2;
+    if (done === 4) completedDays += 1;
+  }
+  for (let i = currentDayNum; i >= 1; i--) {
+    const d = progress[`d${i}`] || {};
+    if (TASKS.filter(t => d[t.id]).length >= 3) streak += 1; else break;
+  }
+
+  return (
+    <div className="min-h-screen text-stone-900">
+      <div className="max-w-6xl mx-auto px-5 py-10 sm:px-8 sm:py-14">
+
+        <div className="mb-10 flex items-end justify-between flex-wrap gap-4">
+          <div>
+            <div className="font-mono flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-stone-500 mb-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              <span>plan · active</span>
+            </div>
+            <h1 className="font-display text-5xl sm:text-6xl leading-none tracking-tight">
+              90 days<span className="text-stone-400">.</span>
+            </h1>
+            <p className="text-stone-600 mt-3 text-sm sm:text-base max-w-xl">
+              Python · FastAPI · Postgres · Docker · AWS — from dabbler to mid-level remote-ready.
+            </p>
+          </div>
+          <div className="font-mono text-right">
+            <div className="text-[11px] uppercase tracking-wider text-stone-400">Day</div>
+            <div className="text-3xl tabular-nums">{String(currentDayNum).padStart(2, "0")}<span className="text-stone-300">/90</span></div>
+            <div className="text-[11px] text-stone-500 mt-1">Started {fmtDate(startDate)}</div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
+          <Stat icon={<IconCalendar className="w-3.5 h-3.5" />} label="Full days"      value={completedDays} total={90} />
+          <Stat icon={<IconFlame className="w-3.5 h-3.5" />}    label="Streak"         value={streak}        suffix=" days" />
+          <Stat icon={<IconTarget className="w-3.5 h-3.5" />}   label="DSA problems"   value={dsaProblems}   total={150} />
+          <Stat icon={<IconTrophy className="w-3.5 h-3.5" />}   label="Tasks complete" value={totalTasks}    total={360} />
+        </div>
+
+        <div className="font-mono flex items-center gap-4 mb-5 text-[11px] text-stone-500 flex-wrap">
+          <span className="uppercase tracking-wider">Completion</span>
+          <span className="flex items-center gap-1.5"><Cell level={0} />none</span>
+          <span className="flex items-center gap-1.5"><Cell level={1} />1</span>
+          <span className="flex items-center gap-1.5"><Cell level={2} />2</span>
+          <span className="flex items-center gap-1.5"><Cell level={3} />3</span>
+          <span className="flex items-center gap-1.5"><Cell level={4} />4</span>
+          <span className="w-px h-3 bg-stone-300 mx-1"></span>
+          <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm border-2 border-amber-500"></span>milestone</span>
+          <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm border-2 border-stone-900"></span>today</span>
+        </div>
+
+        <div className="bg-white rounded-xl border border-stone-200 p-5 sm:p-8">
+          {PHASES.map((phase, i) => (
+            <Phase key={phase.title} phase={phase} progress={progress}
+                   currentDayNum={currentDayNum} selectedDay={selectedDay}
+                   onSelect={setSelectedDay} last={i === PHASES.length - 1}/>
+          ))}
+        </div>
+
+        <div className="font-mono mt-6 flex items-center justify-between text-[11px] text-stone-400 flex-wrap gap-2">
+          <span>Tap any day to log tasks. Progress saves to this browser.</span>
+          <span className="flex items-center gap-3">
+            <button onClick={exportData} className="hover:text-stone-700 underline underline-offset-2">export backup</button>
+            <button onClick={importData} className="hover:text-stone-700 underline underline-offset-2">import</button>
+            <button onClick={resetStart} className="hover:text-stone-700 underline underline-offset-2">reset start date</button>
+          </span>
+        </div>
+      </div>
+
+      {selectedDay && (
+        <DayDetail dayNum={selectedDay} startDate={startDate} currentDayNum={currentDayNum}
+                   data={progress[`d${selectedDay}`] || {}}
+                   onToggle={(id) => toggleTask(selectedDay, id)}
+                   onNote={(t) => updateNote(selectedDay, t)}
+                   onClose={() => setSelectedDay(null)}
+                   onNav={(n) => setSelectedDay(Math.max(1, Math.min(90, selectedDay + n)))}/>
+      )}
+    </div>
+  );
+}
+
+function Stat({ icon, label, value, total, suffix }) {
+  return (
+    <div className="bg-white rounded-xl border border-stone-200 p-4">
+      <div className="font-mono flex items-center gap-1.5 text-stone-500 text-[11px] uppercase tracking-wider mb-2">
+        {icon}<span>{label}</span>
+      </div>
+      <div className="font-mono flex items-baseline gap-1">
+        <span className="text-2xl tabular-nums font-medium">{value}</span>
+        {total && <span className="text-sm text-stone-400 tabular-nums">/ {total}</span>}
+        {suffix && <span className="text-sm text-stone-400">{suffix}</span>}
+      </div>
+    </div>
+  );
+}
+function Cell({ level }) {
+  const bg = ["bg-stone-100 border border-stone-200","bg-indigo-200","bg-indigo-400","bg-indigo-600","bg-indigo-800"][level];
+  return <span className={`w-3 h-3 rounded-sm inline-block ${bg}`}></span>;
+}
+function Phase({ phase, progress, currentDayNum, selectedDay, onSelect, last }) {
+  const days = []; for (let i = phase.start; i <= phase.end; i++) days.push(i);
+  const phaseDone = days.filter(d => {
+    const data = progress[`d${d}`] || {};
+    return TASKS.filter(t => data[t.id]).length === 4;
+  }).length;
+  const levels = [
+    "bg-stone-100 hover:bg-stone-200 text-stone-500",
+    "bg-indigo-200 hover:bg-indigo-300 text-indigo-900",
+    "bg-indigo-400 hover:bg-indigo-500 text-white",
+    "bg-indigo-600 hover:bg-indigo-700 text-white",
+    "bg-indigo-800 hover:bg-indigo-900 text-white",
+  ];
+  return (
+    <div className={last ? "" : "mb-9"}>
+      <div className="flex items-baseline justify-between mb-4 flex-wrap gap-2">
+        <div>
+          <h2 className="font-display text-2xl leading-none">{phase.title}</h2>
+          <p className="font-mono text-xs text-stone-500 mt-2">{phase.subtitle}</p>
+        </div>
+        <div className="font-mono text-[11px] uppercase tracking-wider text-stone-400 tabular-nums">
+          {phaseDone}/{days.length} days complete
+        </div>
+      </div>
+      <div className="grid gap-1.5" style={{ gridTemplateColumns: "repeat(10, minmax(0, 1fr))" }}>
+        {days.map(dayNum => {
+          const data = progress[`d${dayNum}`] || {};
+          const done = TASKS.filter(t => data[t.id]).length;
+          const isToday = dayNum === currentDayNum;
+          const isSelected = dayNum === selectedDay;
+          const milestone = MILESTONES[dayNum];
+          const ring = isSelected ? "ring-2 ring-indigo-600 ring-offset-2 ring-offset-white"
+                     : isToday    ? "ring-2 ring-stone-900 ring-offset-2 ring-offset-white"
+                     : milestone  ? "ring-2 ring-amber-500 ring-offset-1 ring-offset-white" : "";
+          return (
+            <button key={dayNum} onClick={() => onSelect(dayNum)}
+              title={milestone ? `Day ${dayNum} · ${milestone.label}` : `Day ${dayNum}`}
+              className={`font-mono relative aspect-square rounded-md text-[10px] sm:text-xs transition-all tabular-nums font-medium ${levels[done]} ${ring}`}>
+              {dayNum}
+              {milestone && <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-amber-500"></span>}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+function DayDetail({ dayNum, startDate, currentDayNum, data, onToggle, onNote, onClose, onNav }) {
+  const dateStr = addDays(startDate, dayNum - 1);
+  const phase = dayNum <= 30 ? "Foundation" : dayNum <= 60 ? "Depth + Cloud" : "Polish + Apply";
+  const milestone = MILESTONES[dayNum];
+  const isPast = dayNum < currentDayNum;
+  const isToday = dayNum === currentDayNum;
+  return (
+    <div className="fixed inset-0 bg-stone-900/30 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+         onClick={onClose}>
+      <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl border border-stone-200 overflow-hidden"
+           onClick={e => e.stopPropagation()}>
+        <div className="px-5 pt-5 pb-4 border-b border-stone-100 flex items-start justify-between">
+          <div>
+            <div className="flex items-center gap-1 text-stone-400">
+              <button onClick={() => onNav(-1)} disabled={dayNum === 1} className="disabled:opacity-30 hover:text-stone-900 p-1"><IconLeft className="w-4 h-4"/></button>
+              <h3 className="font-display text-2xl text-stone-900 leading-none">Day {dayNum}</h3>
+              <button onClick={() => onNav(1)} disabled={dayNum === 90} className="disabled:opacity-30 hover:text-stone-900 p-1"><IconRight className="w-4 h-4"/></button>
+            </div>
+            <div className="font-mono flex items-center gap-2 mt-1.5 text-[11px] uppercase tracking-wider">
+              <span className="text-stone-500">{fmtDate(dateStr)}</span>
+              <span className="text-stone-300">·</span>
+              <span className="text-stone-500">{phase}</span>
+              {isToday && <><span className="text-stone-300">·</span><span className="text-emerald-600">today</span></>}
+              {isPast &&  <><span className="text-stone-300">·</span><span className="text-stone-400">past</span></>}
+            </div>
+          </div>
+          <button onClick={onClose} className="text-stone-400 hover:text-stone-900 p-1 -mr-1 -mt-1"><IconX className="w-5 h-5"/></button>
+        </div>
+
+        {milestone && (
+          <div className="mx-5 mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="font-mono text-[10px] uppercase tracking-wider text-amber-700 mb-1">Milestone</div>
+            <div className="text-sm text-amber-900 font-medium">{milestone.label}</div>
+          </div>
+        )}
+
+        <div className="px-5 py-4 space-y-1.5">
+          {TASKS.map(task => {
+            const done = !!data[task.id];
+            return (
+              <button key={task.id} onClick={() => onToggle(task.id)}
+                className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left ${
+                  done ? "bg-indigo-50 border-indigo-200" : "bg-white border-stone-200 hover:border-stone-300"}`}>
+                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                  done ? "bg-indigo-600 border-indigo-600" : "bg-white border-stone-300"}`}>
+                  {done && <IconCheck className="w-3 h-3 text-white"/>}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className={`text-sm font-medium ${done ? "text-indigo-900 line-through opacity-75" : "text-stone-900"}`}>{task.label}</div>
+                  <div className="font-mono text-[11px] text-stone-500 mt-0.5">{task.time}</div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="px-5 pb-5">
+          <label className="font-mono text-[10px] uppercase tracking-wider text-stone-500 mb-1.5 block">What shipped today?</label>
+          <textarea value={data.note || ""} onChange={(e) => onNote(e.target.value)}
+            placeholder="One line. What got done. What blocked you. That's enough."
+            className="w-full h-20 p-3 text-sm border border-stone-200 rounded-lg focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 outline-none resize-none placeholder:text-stone-400"/>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<PlanCalendar/>);
+</script>
+</body>
+</html>
